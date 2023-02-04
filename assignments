@@ -1,0 +1,75 @@
+from django.db import models
+from django import forms
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import Employee
+from .forms import EmployeeForm
+
+
+class Employee(models.Model):
+    photo = models.ImageField(upload_to='employee_photos/')
+    full_name = models.CharField(max_length=100)
+    email = models.EmailField()
+    mobile_number = models.CharField(max_length=15)
+    date_of_birth = models.DateField()
+    country = models.CharField(max_length=50)
+    state = models.CharField(max_length=50)
+    SKILL_CHOICES = (
+        ('COM', 'Communication'),
+        ('WUP', 'Ability to Work under Pressure'),
+        ('DM', 'Decision Making'),
+        ('TM', 'Time Management'),
+        ('SM', 'Self-motivation'),
+        ('CR', 'Conflict Resolution'),
+        ('L', 'Leadership'),
+        ('A', 'Adaptability'),
+    )
+    skills = models.CharField(choices=SKILL_CHOICES, max_length=2, null=True)
+
+class EmployeeForm(forms.ModelForm):
+    class Meta:
+        model = Employee
+        fields = ['photo', 'full_name', 'email', 'mobile_number', 'date_of_birth', 'country', 'state', 'skills']
+        widgets = {
+            'date_of_birth': forms.SelectDateWidget(),
+            'skills': forms.CheckboxSelectMultiple(),
+        }
+
+def employee_list(request):
+    employees = Employee.objects.all()
+    return render(request, 'employee_list.html', {'employees': employees})
+
+def create_employee(request):
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Employee created successfully!')
+            return redirect('employee_list')
+        else:
+            messages.error(request, 'Error creating employee.')
+    else:
+        form = EmployeeForm()
+    return render(request, 'create_employee.html', {'form': form})
+
+def edit_employee(request, pk):
+    employee = Employee.objects.get(pk=pk)
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST, request.FILES, instance=employee)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Employee updated successfully!')
+            return redirect('employee_list')
+        else:
+            messages.error(request, 'Error updating employee.')
+    else:
+        form = EmployeeForm(instance=employee)
+    return render(request, 'edit_employee.html', {'form': form})
+
+def delete_employee(request, pk):
+    if request.method == 'POST':
+        employee = Employee.objects.get(pk=pk)
+        employee.delete()
+        messages.success(request, 'Employee deleted successfully!')
+        return redirect('employee_list')
+    return render(request, 'delete_employee.html', {'pk': pk})
